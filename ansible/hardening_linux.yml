@@ -1,0 +1,252 @@
+---
+- name: Modulo 5 - Hardening Linux CREATIC
+  hosts: linux_servers
+  become: true
+  gather_facts: true
+
+  handlers:
+    - name: Reiniciar SSH
+      service:
+        name: ssh
+        state: restarted
+
+    - name: Reiniciar Fail2ban
+      service:
+        name: fail2ban
+        state: restarted
+
+  tasks:
+    - name: Mostrar servidor objetivo
+      debug:
+        msg: "Aplicando hardening Linux sobre {{ inventory_hostname }}"
+
+    - name: Validar variables requeridas
+      assert:
+        that:
+          - usuario_administrador is defined
+          - ssh_port is defined
+          - red_administracion is defined
+        fail_msg: "Faltan variables requeridas para ejecutar el hardening."
+
+    - name: Actualizar cache de paquetes
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Actualizar paquetes instalados
+      apt:
+        upgrade: safe
+
+    - name: Instalar paquetes de seguridad requeridos
+      apt:
+        name:
+          - ufw
+          - fail2ban
+          - auditd
+          - unattended-upgrades
+        state: present
+
+    - name: Eliminar paquetes inseguros o innecesarios
+      apt:
+        name: "{{ paquetes_inseguros }}"
+        state: absent
+        purge: true
+      ignore_errors: true
+
+    - name: Deshabilitar servicios innecesarios
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop: "{{ servicios_innecesarios }}"
+      ignore_errors: true
+
+    - name: Configurar puerto SSH endurecido
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*Port\s+'
+        line: "Port {{ ssh_port }}"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Deshabilitar login root por SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*PermitRootLogin\s+'
+        line: "PermitRootLogin no"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Deshabilitar contrasenas vacias por SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*PermitEmptyPasswords\s+'
+        line: "PermitEmptyPasswords no"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Deshabilitar X11 Forwarding
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*X11Forwarding\s+'
+        line: "X11Forwarding no"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Configurar maximo de intentos de autenticacion SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*MaxAuthTries\s+'
+        line: "MaxAuthTries {{ ssh_max_auth_tries }}"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Configurar intervalo de vida de sesion SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*ClientAliveInterval\s+'
+        line: "ClientAliveInterval {{ ssh_client_alive_interval }}"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Configurar limite de mensajes ClientAliveCountMax
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*ClientAliveCountMax\s+'
+        line: "ClientAliveCountMax {{ ssh_client_alive_count_max }}"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Permitir solo usuario administrador por SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*AllowUsers\s+'
+        line: "AllowUsers {{ usuario_administrador }}"
+        backup: yes
+      notify: Reiniciar SSH
+
+    - name: Configurar Fail2ban para SSH
+      copy:
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [sshd]
+          enabled = true
+          port = {{ ssh_port }}
+          filter = sshd
+          logpath = /var/log/auth.log
+          maxretry = 3
+          bantime = 600
+          findtime = 600
+      notify: Reiniciar Fail2ban
+
+    - name: Habilitar y arrancar Fail2ban
+      service:
+        name: fail2ban
+        state: started
+        enabled: yes
+
+    - name: Reiniciar reglas UFW
+      command: ufw --force reset
+
+    - name: Configurar politica por defecto de entrada
+      command: ufw default deny incoming
+
+    - name: Configurar politica por defecto de salida
+      command: ufw default allow outgoing
+
+    - name: Permitir SSH endurecido desde red de administracion
+      command: "ufw allow from {{ red_administracion }} to any port {{ ssh_port }} proto tcp"
+
+    - name: Permitir HTTP en servidor web
+      command: "ufw allow {{ puerto_http }}/tcp"
+      when: "'web_servers' in group_names"
+
+    - name: Permitir HTTPS en servidor web
+      command: "ufw allow {{ puerto_https }}/tcp"
+      when: "'web_servers' in group_names"
+
+    - name: Permitir MariaDB solo desde servidor de aplicaciones
+      command: "ufw allow from {{ ip_appsrv }} to any port {{ puerto_mysql }} proto tcp"
+      when: "'db_servers' in group_names"
+
+    - name: Activar UFW
+      command: ufw --force enable
+
+    - name: Habilitar actualizaciones automaticas de seguridad
+      copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    - name: Forzar ejecucion de handlers antes de verificar
+      meta: flush_handlers
+
+    - name: Verificacion SSH post-hardening
+      shell: /usr/sbin/sshd -T | egrep 'port|permitrootlogin|permitemptypasswords|x11forwarding|maxauthtries|clientaliveinterval|clientalivecountmax'
+      register: ssh_verification
+      changed_when: false
+
+    - name: Mostrar verificacion SSH
+      debug:
+        var: ssh_verification.stdout_lines
+
+    - name: Verificar estado de UFW
+      command: ufw status numbered
+      register: ufw_status
+      changed_when: false
+
+    - name: Mostrar estado de UFW
+      debug:
+        var: ufw_status.stdout_lines
+
+    - name: Verificar puerto SSH endurecido
+      shell: "ss -tulnp | grep ':{{ ssh_port }}'"
+      register: ssh_port_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Mostrar puerto SSH endurecido
+      debug:
+        var: ssh_port_status.stdout_lines
+
+    - name: Verificar Apache en servidor web
+      shell: "systemctl is-active apache2 && curl -I http://localhost"
+      register: apache_status
+      changed_when: false
+      ignore_errors: true
+      when: "'web_servers' in group_names"
+
+    - name: Mostrar verificacion Apache
+      debug:
+        var: apache_status.stdout_lines
+      when: "'web_servers' in group_names"
+
+    - name: Verificar MariaDB en servidor de base de datos
+      shell: "systemctl is-active mariadb"
+      register: mariadb_status
+      changed_when: false
+      ignore_errors: true
+      when: "'db_servers' in group_names"
+
+    - name: Mostrar verificacion MariaDB
+      debug:
+        var: mariadb_status.stdout_lines
+      when: "'db_servers' in group_names"
+
+    - name: Resumen final de hardening Linux
+      debug:
+        msg:
+          - "Servidor evaluado: {{ inventory_hostname }}"
+          - "SSH configurado en puerto: {{ ssh_port }}"
+          - "PermitRootLogin: deshabilitado"
+          - "PermitEmptyPasswords: deshabilitado"
+          - "UFW: activo"
+          - "Fail2ban: activo"
+          - "Verificacion post-hardening: completada"

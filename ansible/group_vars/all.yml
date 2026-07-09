@@ -1,0 +1,28 @@
+---
+usuario_administrador: "creaticadmin"
+
+ssh_port: "2222"
+ssh_max_auth_tries: "3"
+ssh_client_alive_interval: "300"
+ssh_client_alive_count_max: "2"
+
+red_administracion: "192.168.50.0/24"
+ip_appsrv: "192.168.50.20"
+
+puerto_http: "80"
+puerto_https: "443"
+puerto_mysql: "3306"
+
+servicios_innecesarios:
+  - avahi-daemon
+  - cups
+  - rpcbind
+  - nfs-server
+
+paquetes_inseguros:
+  - telnet
+  - rsh-client
+  - rsh-server
+  - xinetd
+  - tftp
+  - tftpd
