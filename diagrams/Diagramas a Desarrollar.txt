@@ -1,0 +1,166 @@
+=========================================
+PROYECTO FINAL - LISTADO DE DIAGRAMAS
+=========================================
+
+MÓDULO 1 - ANÁLISIS DE RIESGOS
+
+Figura 1.
+Mapa de Activos Críticos de CREATIC
+- Infraestructura
+- Información
+- Personas
+Objetivo: Identificar qué activos protege la organización.
+
+Figura 2.
+Cadena de Ataque (Cyber Kill Chain)
+- Internet
+- Phishing
+- Robo de credenciales
+- VPN
+- Servidor Web
+- Movimiento lateral
+- Base de Datos
+- Servidor de Archivos
+- Ransomware
+Objetivo: Mostrar cómo un atacante comprometería la infraestructura actual.
+
+
+=========================================
+
+MÓDULO 2 - ARQUITECTURA ZERO TRUST
+
+Figura 3.
+Arquitectura Actual (AS-IS)
+- Internet
+- Stateful Firewall
+- Red plana
+- Servidores
+- Usuarios
+- VPN
+- Debilidades identificadas
+Objetivo: Mostrar la infraestructura actual y sus vulnerabilidades.
+
+Figura 4.
+Arquitectura Propuesta (TO-BE)
+- Internet
+- pfSense NGFW
+- Suricata IDS/IPS
+- Core Switch
+- VLAN DMZ
+- VLAN Servidores
+- VLAN Administración
+- VLAN Estudiantes
+- VLAN BYOD
+- Keycloak
+- Headscale
+- Wazuh
+Objetivo: Presentar la nueva arquitectura Zero Trust.
+
+Figura 5.
+Microsegmentación de la Red
+- Core Switch
+- VLAN Administración
+- VLAN Servidores
+- VLAN DMZ
+- VLAN Estudiantes
+- VLAN BYOD
+- Reglas de comunicación entre VLANs
+Objetivo: Mostrar las políticas de segmentación y aislamiento.
+
+Figura 6.
+Flujo de Autenticación Zero Trust
+- Usuario
+- Portal Académico
+- Keycloak
+- MFA
+- Headscale
+- Evaluación de postura
+- Acceso permitido o denegado
+- Registro en Wazuh
+Objetivo: Explicar el proceso de autenticación segura.
+
+
+=========================================
+
+MÓDULO 3 - CENTRO DE OPERACIONES DE SEGURIDAD (SOC)
+
+Figura 7.
+Arquitectura del SOC
+- Servidores Windows
+- Servidores Linux
+- Apache
+- MySQL
+- pfSense
+- Suricata
+- Keycloak
+- Headscale
+- Wazuh Manager
+- Wazuh Indexer
+- Wazuh Dashboard
+- Shuffle
+- TheHive
+- Analista SOC
+Objetivo: Mostrar la arquitectura completa del SOC.
+
+Figura 8.
+Flujo Automatizado de Respuesta a Incidentes
+- Evento
+- Wazuh
+- Correlación
+- Shuffle
+- Bloqueo automático
+- Creación de incidente
+- TheHive
+- Analista SOC
+Objetivo: Mostrar el proceso automático de respuesta.
+
+
+=========================================
+
+MÓDULO 4 - DEVSECOPS
+
+Figura 9.
+Proceso Actual de Desarrollo (AS-IS)
+- Desarrollador
+- Desarrollo
+- Pruebas funcionales
+- Despliegue
+- Producción
+Objetivo: Mostrar el proceso actual sin controles de seguridad.
+
+Figura 10.
+Pipeline DevSecOps (TO-BE)
+- Developer
+- GitHub
+- GitHub Actions
+- Semgrep (SAST)
+- Dependency Check (SCA)
+- Gitleaks
+- Docker Build
+- Trivy
+- OWASP ZAP (DAST)
+- Deploy
+- Apache
+- Wazuh
+Objetivo: Mostrar el pipeline seguro de desarrollo.
+
+Figura 11.
+Integración DevSecOps + Zero Trust + SOC
+- Developer
+- GitHub
+- Pipeline DevSecOps
+- Apache
+- Usuarios
+- Keycloak
+- Headscale
+- pfSense
+- Suricata
+- Wazuh
+- Shuffle
+- TheHive
+- CSIRT
+Objetivo: Mostrar cómo todos los componentes del proyecto trabajan de forma integrada.
+
+=========================================
+TOTAL DE DIAGRAMAS (MÓDULOS 1-4): 11
+=========================================e.
